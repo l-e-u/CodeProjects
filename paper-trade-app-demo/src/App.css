@@ -1,0 +1,77 @@
+* {
+  box-sizing: border-box;
+}
+
+.App {
+  background-color: cornflowerblue;
+  min-height: 100vh;
+  min-width: 400px;
+  overflow: auto;
+}
+
+.acctBalDisplay {
+  background-color: whitesmoke;
+  box-shadow: 0 .5rem 1rem rgba(0 0 0 / .15);
+  padding: 1rem 2rem;
+  margin: 0 auto;
+  text-align: right;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 0 0 .25rem .25rem;
+  position: fixed;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%);
+}
+
+.tradesDisplay {
+  background-color: rgba(255 255 255 / .5);
+  border-radius: .25rem;
+  margin: 5.5rem auto 2rem auto;
+  max-width: 600px;
+  min-width: 400px;
+  padding: .5rem 1rem;
+  width: 100%;
+}
+
+.usdCurrencySymbol::before {
+  content: '$';
+}
+
+/* Apply when the screen is 575px or smaller */
+@media only screen and (max-width: 575px) {
+
+  /* When */
+  .columnContainer .column:first-child {
+    width: 35%;
+  }
+
+  /* Avg Price */
+  .columnContainer .column:nth-child(2) {
+    width: 20%;
+  }
+
+  /* Shares */
+  .columnContainer .column:nth-child(3) {
+    width: 20%;
+  }
+
+  /* Position */
+  .columnContainer .column:last-child {
+    width: 25%;
+  }
+}
+
+/* Apply when the screen is 576px or larger */
+@media only screen and (min-width: 576px) {
+
+  /* When columns */
+  .columnContainer .column:first-child {
+    width: 40%;
+  }
+
+  /* Avg Price, Shares, and Position columns */
+  .columnContainer .column:not(first-child) {
+    width: 20%;
+  }
+}
