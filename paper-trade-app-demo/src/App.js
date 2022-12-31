@@ -1,6 +1,26 @@
 import './App.css';
 import { useEffect, useState } from 'react';
 
+class PiggyBank {
+  constructor(){
+    this.balance = 0;
+    this.transactions=[];
+    this.companies=[];
+    this.openPositions =[];
+  };
+  applyTrade(trade){
+    const isNewCompany = !companies.includes(trade.company.ticker);
+    
+    if(isNewCompany){
+      openPositions.push(trade);
+      companies.push(trade.company.ticker);
+      this.balance -= trade.amount;
+      return;
+    };
+    
+  }
+};
+
 // Accepts a date string and returns it formatted
 function formattedDateString(dateString) {
   const date = new Date(dateString);
