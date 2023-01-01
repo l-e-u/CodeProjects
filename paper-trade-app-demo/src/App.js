@@ -2,22 +2,31 @@ import './App.css';
 import { useEffect, useState } from 'react';
 
 class PiggyBank {
-  constructor(){
+  constructor() {
     this.balance = 0;
-    this.transactions=[];
-    this.companies=[];
-    this.openPositions =[];
+    this.transactions = [];
+    this.positions = new Map();
   };
-  applyTrade(trade){
-    const isNewCompany = !companies.includes(trade.company.ticker);
-    
-    if(isNewCompany){
-      openPositions.push(trade);
-      companies.push(trade.company.ticker);
-      this.balance -= trade.amount;
+  applyTrade(trade) {
+    const position = this.positions.get(trade.company.ticker);
+
+    // When company doesn't have an open position, set the ticker as the key and trade as the value, debit the trade amount from the balance and end function
+    if (!position) {
+      const { amount, company, shares } = trade;
+      const trades = [
+        {
+          amount,
+          shares,
+          avgPrice: amount / shares
+        }
+      ]
+      this.positions.set(company.ticker, { company, trades });
+      this.balance -= amount;
       return;
     };
-    
+
+    // Find the remainder of shares after apply the trade to an open position
+    const remainder = position.amount + trade.amount;
   }
 };
 
