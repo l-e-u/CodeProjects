@@ -1,48 +1,91 @@
 import './App.css';
 import { useEffect, useState } from 'react';
 
+class CompanyInfoAndTransactions {
+  constructor({ name, ticker, id }) {
+    this.name = name;
+    this.ticker = ticker;
+    this.id = id;
+    this.transactions = [];
+  }
+}
+
+class Transaction {
+  constructor(amount, date) {
+    this.amount = amount * 100;
+    this.date = new Date(date);
+  }
+}
+
+class Position extends Transaction {
+  constructor(amount, date, shares) {
+    super(amount, date);
+    this.shares = shares;
+  }
+}
+
+class Trade extends Transaction {
+  constructor({ amount, date, note, id }) {
+    super(amount, date);
+    this.note = note;
+    this.id = id;
+  }
+}
+
 class PiggyBank {
   constructor() {
     this.balance = 0;
-    this.transactions = [];
-    this.positions = new Map();
+    this.transactionsGroupedByTicker = [];
+    this.positionsMapByTicker = new Map();
   };
-  applyTrade(trade) {
-    const position = this.positions.get(trade.company.ticker);
+  // Accepts one trade and groups it by ticker.
+  // If applicable, apply the trade to an open position, or open a new position.
+  // When appropriate, calc realized and/or apply to balance.
+  applyTrade(data) {
+    const { company, ...trade } = data;
+    const ticker = company.ticker;
+    const TradeTransaction = new Trade(trade);
+    debugger;
+    // Add a new group if one doesn't exist
+    this.transactionsGroupedByTicker.includes(group => group.ticker === ticker) ||
+      this.transactionsGroupedByTicker.push(new CompanyInfoAndTransactions(company));
 
-    // When company doesn't have an open position, set the ticker as the key and trade as the value, debit the trade amount from the balance and end function
-    if (!position) {
-      const { amount, company, shares } = trade;
-      const trades = [
-        {
-          amount,
-          shares,
-          avgPrice: amount / shares
-        }
-      ]
-      this.positions.set(company.ticker, { company, trades });
-      this.balance -= amount;
+    // Store the trade in its ticker group.
+    this.transactionsGroupedByTicker
+      .find(group => group.ticker === ticker)
+      .transactions
+      .push(TradeTransaction);
+
+    // When company doesn't have an open position, set ticker/trade pair as key/value in map
+    if (!this.positionsMapByTicker.has(ticker)) {
+      this.positionsMapByTicker.set(ticker, [new Position(trade.amount, trade.date, trade.shares)]);
+
+      // Debit the trade amount from balance and end function.
+      this.balance -= TradeTransaction.amount;
       return;
     };
 
-    // Find the remainder of shares after apply the trade to an open position
-    const remainder = position.amount + trade.amount;
+
+    // Apply trade to open position.
+    // Number of position shares relative to trade shares determine how position is updated and any realized amounts applied to balance.
+    const position = this.positionsMapByTicker.get(ticker);
+    const positionSharesRelativeToTradeShares = position.shares / TradeTransaction.shares;
+
+    // Close Order: the shares cancel each other out, thus closing the position.
+    // if (positionSharesRelativeToTradeShares === 0) {
+    //   const Realized = new Transaction(
+    //     TradeTransaction.company,
+    //     (position.amount + TradeTransaction.amount),
+    //     TradeTransaction.date);
+    //   this.positionsMapByTicker.get(ticker).push(Realized);
+    // };
+
   }
 };
 
-// Accepts a date string and returns it formatted
-function formattedDateString(dateString) {
-  const date = new Date(dateString);
-  const dateArr = date.toString().split(' ');
-  const weekday = dateArr[0];
-  const month = dateArr[1];
-  const day = dateArr[2];
-  const year = dateArr[3];
-  const time = dateArr[4];
-  const meridiem = date.getHours() <= 12 ? 'a' : 'p';
-
-  return `${year} ${month} ${day} ${weekday} @${time}${meridiem}`;
-}
+function getCurrencyString(total) {
+  return (total / 100).toFixed(2);
+};
 
 // Displays the calculated cash amount
 function AccountBalance(props) {
@@ -69,7 +112,7 @@ function ColumnHeaders() {
 function CompanyDetailsAndTrades(props) {
   return (
     <div>
-      <HeadersSeparatedByDash
+      <CompanyTickerHeaders
         header1={props.firstHeader}
         header2={props.secondHeader}
       />
@@ -80,7 +123,7 @@ function CompanyDetailsAndTrades(props) {
   )
 }
 
-function HeadersSeparatedByDash(props) {
+function CompanyTickerHeaders(props) {
   return <h4>{props.header1 + ' - ' + props.header2}</h4>;
 }
 
@@ -188,9 +231,27 @@ function App() {
           if (ticker1 > ticker2) return 1;
           return 0;
         });
+
+        const piggy = new PiggyBank();
+        debugger;
+        piggy.applyTrade(
+          {
+            "amount": 411.24,
+            "shares": -94,
+            "date": "2022-12-28T20:35:46.232Z",
+            "note": "Etiam molestie vestibulum ligula vel vulputate.",
+            "id": "63aca8a270fd2b5378eea5ec",
+            "company": {
+              "ticker": "ACN",
+              "name": "Accenture",
+              "id": "63aca885dc397a342ad9821d"
+            }
+          });
+
+
         setData(formattedData);
         // for debugging.....
-        console.log(formattedData);
+        // console.log(formattedData);
       },
         (error) => {
           setLoaded(false);
