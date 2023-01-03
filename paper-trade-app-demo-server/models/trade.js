@@ -12,9 +12,12 @@ const tradeSchema = new mongoose.Schema(
             ref: 'Company',
             required: true
         },
+        date: {
+            type: Date,
+            default: () => new Date()
+        },
         amount: Number,
         shares: Number,
-        date: Date,
         note: String
     },
     {
