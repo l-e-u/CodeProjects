@@ -1,6 +1,15 @@
 import './App.css';
 import { useEffect, useState } from 'react';
 
+const USDollar = new Intl.NumberFormat(
+  'en-US',
+  {
+    style: 'currency',
+    currency: 'USD',
+  }
+);
+
+// All transactions are grouped by ticker
 class CompanyInfoAndTransactions {
   constructor({ name, ticker }) {
     this.name = name;
@@ -9,6 +18,7 @@ class CompanyInfoAndTransactions {
   }
 }
 
+// The basis for all transactions, a realized entry only needs this base.
 class Transaction {
   constructor(amount, date) {
     this.amount = amount;
@@ -16,13 +26,16 @@ class Transaction {
   }
 }
 
+// For positions that are currently open.
 class Position extends Transaction {
   constructor(amount, date, shares) {
     super(amount, date);
     this.shares = shares;
+    this.price = amount / shares;
   }
 }
 
+// Any transaction that involves buying/selling shares.
 class Trade extends Position {
   constructor({ amount, shares, date, note, id }) {
     super(amount, date, shares);
@@ -31,6 +44,7 @@ class Trade extends Position {
   }
 }
 
+// Converts each amount to pennies (integers) for addition then returns decimal.
 function addCurrency(...amounts) {
   return (amounts.reduce((total, amount) => total + (amount * 100), 0) / 100);
 }
@@ -51,23 +65,39 @@ function getRealizedTransaction(posAmount, tradeAmount, date, isBuyBack) {
   return new Transaction(realizedAmount, splitSecondAfterDate);
 };
 
-function getCurrencyString(total) {
-  return (total / 100).toFixed(2);
+function AddTradeForm(props) {
+  return (
+    <form>
+      <div class="mb-3">
+        <label for="ticker" class="form-label">Ticker</label>
+        <input type="text" class="form-control" id="ticker" />
+      </div>
+      <div class="mb-3">
+        <label for="company" class="form-label">Company</label>
+        <input type="text" class="form-control" id="company" />
+      </div>
+      <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="shortSell" />
+        <label class="form-check-label" for="shortSell">short/sell</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+  )
 };
 
 // Displays the calculated cash amount
-function AccountBalance(props) {
-  let balance = props.amount || 0;
+function CashHeader(props) {
+  let balance = USDollar.format(props.total);
 
   return (
-    <h1 className='acctBalDisplay usdCurrencySymbol'>{balance}</h1>
+    <h1 className='text-end tabluarNumbers pe-4'>{balance}</h1>
   )
 }
 
 // Returns an unordered list with one item that holds the columns' names
 function ColumnHeaders() {
   return (
-    <div className='columnContainer d-flex font-weight-bold small border-bottom pb-1 mb-2'>
+    <div className='rowOfItems d-flex font-weight-bold small border-bottom pb-1 mb-2'>
       <strong className='column text-center'>When</strong>
       <strong className='column text-end'>Avg Price</strong>
       <strong className='column text-end'>Shares</strong>
@@ -91,10 +121,12 @@ function CompanyDetailsAndTrades(props) {
   )
 }
 
+// Returns ticker and name of company separated by dash.
 function CompanyTickerHeaders(props) {
   return <h4>{props.header1 + ' - ' + props.header2}</h4>;
 }
 
+// Parses a date and returns a custom format.
 function FormattedDate(props) {
   const date = new Date(props.dateString);
   const dateArr = date.toString().split(' ');
@@ -113,18 +145,53 @@ function FormattedDate(props) {
   )
 }
 
+function Menu(props) {
+  return (
+    <div className='d-flex justify-content-between px-1'>
+      <button
+        type='button'
+        className='btn btn-link btn-sm text-secondary'
+      >
+        +Trade
+      </button>
+      <button
+        type='button'
+        className='btn btn-link btn-sm text-secondary'
+        onClick={() => window.location.reload()}
+      >
+        -logout {props.name}
+      </button>
+    </div>
+  )
+};
+
+// Returns a list of all the trades and realized gains/losses for the ticker group
 function UnorderedListTemplate(props) {
   return (
     <ul className='list-unstyled my-1 mx-0 pb-2 pe-0'>
       {props.items.map((entry, index) => {
-        const price = Math.abs(entry.amount / entry.shares).toFixed(2);
+        const isRealizedTransaction = !(entry instanceof Trade);
+        let realizedCssClass = 'list-group-item-';
+        realizedCssClass += entry.amount > 0 ? 'success' : 'danger';
 
+        // Return following element if entry is a realized transaction.
+        if (isRealizedTransaction) {
+          return (
+            <li className='d-flex justify-content-end small' key={index}>
+              <div className={'text-end mx-n2 px-n2 ' + realizedCssClass}>
+                Realized:<span className='ps-2'>{USDollar.format(entry.amount)}</span>
+              </div>
+            </li>
+          );
+        };
+
+        // Return following element if entry is a trade transaction.
         return (
-          <li className='columnContainer d-flex small' key={index}>
+          <li className='rowOfItems d-flex small' key={index}>
             <div className='column'><FormattedDate dateString={entry.date} /></div>
-            <div className='column text-end'>{price}</div>
+            <div className='column text-end'>{USDollar.format(entry.price)}</div>
             <div className='column text-end'>{entry.shares}</div>
-            <div className='column text-end'>{entry.amount}</div>
+            <div className='column text-end'>{USDollar.format(entry.amount)}</div>
           </li>
         )
       })}
@@ -132,28 +199,28 @@ function UnorderedListTemplate(props) {
   )
 }
 
+// Returns element displaying ticker and company name with list of its transactions.
 function ListOfCompaniesAndTrades(props) {
-
-  const companiesAndTradeHistoryJSX = props.history.map(data => {
-    return (
-      <CompanyDetailsAndTrades
-        key={data.company.ticker}
-        firstHeader={data.company.ticker}
-        secondHeader={data.company.name}
-        trades={data.trades}
-      />
-    )
-  });
-
   return (
     <div className='tradesDisplay'>
       <ColumnHeaders />
-      {companiesAndTradeHistoryJSX}
+      {props.history.map(group => {
+        return (
+          <CompanyDetailsAndTrades
+            key={group.ticker}
+            firstHeader={group.ticker}
+            secondHeader={group.name}
+            trades={group.transactions}
+          />
+        )
+      })}
     </div>
   )
 }
 
 function App() {
+  const [username, setUsername] = useState('elihu');
+  const [userId, setUserId] = useState('639cc46151da8d964f60390b');
   const [trades, setTrades] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
@@ -227,8 +294,12 @@ function App() {
 
   return (
     <div className='App'>
-      <AccountBalance amount={cash} />
-      {/* <ListOfCompaniesAndTrades history={data} /> */}
+      <div className='topDisplay'>
+        <Menu name={username} />
+        <CashHeader total={cash} />
+      </div>
+      <AddTradeForm />
+      <ListOfCompaniesAndTrades history={groups} />
     </div>
   );
 }

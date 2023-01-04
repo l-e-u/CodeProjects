@@ -2,19 +2,28 @@
   box-sizing: border-box;
 }
 
+ul .rowOfItems:hover {
+  background-color: rgba(255 255 255 / .2);
+  transition: background-color .3s;
+}
+
 .App {
   background-color: cornflowerblue;
   min-height: 100vh;
   min-width: 400px;
   overflow: auto;
+  padding-top: 6rem;
+  padding-bottom: 2rem;
 }
 
-.acctBalDisplay {
+.tabularNumbers {
+  font-variant-numeric: tabular-nums;
+}
+
+.topDisplay {
   background-color: whitesmoke;
   box-shadow: 0 .5rem 1rem rgba(0 0 0 / .15);
-  padding: 1rem 2rem;
   margin: 0 auto;
-  text-align: right;
   width: 100%;
   max-width: 500px;
   border-radius: 0 0 .25rem .25rem;
@@ -24,10 +33,11 @@
   transform: translate(-50%);
 }
 
-.tradesDisplay {
+.tradesDisplay,
+form {
   background-color: rgba(255 255 255 / .5);
   border-radius: .25rem;
-  margin: 5.5rem auto 2rem auto;
+  margin: 0 auto;
   max-width: 600px;
   min-width: 400px;
   padding: .5rem 1rem;
@@ -38,27 +48,40 @@
   content: '$';
 }
 
+/* Targets list items and realized amount elements */
+ul *[class*=list-group-item-],
+ul li {
+  border-radius: 2px;
+  margin: 0 -.5rem;
+  padding: 0 .5rem;
+}
+
 /* Apply when the screen is 575px or smaller */
 @media only screen and (max-width: 575px) {
 
   /* When */
-  .columnContainer .column:first-child {
+  .rowOfItems .column:first-child {
     width: 35%;
   }
 
   /* Avg Price */
-  .columnContainer .column:nth-child(2) {
+  .rowOfItems .column:nth-child(2) {
     width: 20%;
   }
 
   /* Shares */
-  .columnContainer .column:nth-child(3) {
+  .rowOfItems .column:nth-child(3) {
     width: 20%;
   }
 
   /* Position */
-  .columnContainer .column:last-child {
+  .rowOfItems .column:last-child {
     width: 25%;
+  }
+
+  ul *[class*=list-group-item-] {
+    position: relative;
+    bottom: 1rem;
   }
 }
 
@@ -66,12 +89,12 @@
 @media only screen and (min-width: 576px) {
 
   /* When columns */
-  .columnContainer .column:first-child {
+  .rowOfItems .column:first-child {
     width: 40%;
   }
 
   /* Avg Price, Shares, and Position columns */
-  .columnContainer .column:not(first-child) {
+  .rowOfItems .column:not(first-child) {
     width: 20%;
   }
 }
