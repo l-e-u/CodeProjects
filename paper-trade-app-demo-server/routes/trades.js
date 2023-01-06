@@ -627,19 +627,20 @@ router.get('/', async function (req, res, next) {
 // Post new trade for user
 router.post('/', async function (req, res, next) {
     const { company, ...trade } = req.body;
-    console.log(company);
+
     // Find existing company document, else create it
-    const result = await req.context.models.Company.findOneAndUpdate(
+    const companyDoc = await req.context.models.Company.findOneAndUpdate(
         { ticker: company.ticker },
         { $setOnInsert: { ...company } },
         { upsert: true, new: true }
     );
 
-    // Store company document id in the new trade
-    trade.company_id = result._id;
+    // Store company document id in the new trade and create doc
+    trade.company_id = companyDoc._id;
+    const newTrade = await req.context.models.Trade.create(trade);
 
-    // Save the new trade and return it
-    return res.send(await req.context.models.Trade.create(trade));
+    // Return populated doc
+    return res.send(await newTrade.populate('company_id'));
 });
 
 export default router;

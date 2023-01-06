@@ -79,9 +79,10 @@ ul li {
     width: 25%;
   }
 
+  /* On smaller screens, the realized amounts will be moved up slightly */
   ul *[class*=list-group-item-] {
     position: relative;
-    bottom: 1rem;
+    bottom: .75rem;
   }
 }
 

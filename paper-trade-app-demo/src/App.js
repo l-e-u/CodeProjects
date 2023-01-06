@@ -1,12 +1,9 @@
 import './App.css';
 import { useEffect, useState } from 'react';
 
-const USDollar = new Intl.NumberFormat(
+const USDollarString = new Intl.NumberFormat(
   'en-US',
-  {
-    style: 'currency',
-    currency: 'USD',
-  }
+  { style: 'currency', currency: 'USD' }
 );
 
 // All transactions are grouped by ticker
@@ -47,50 +44,166 @@ class Trade extends Position {
 // Converts each amount to pennies (integers) for addition then returns decimal.
 function addCurrency(...amounts) {
   return (amounts.reduce((total, amount) => total + (amount * 100), 0) / 100);
-}
+};
+
+// Returns a number by default, with the option of returning a USD currency string.
+function currencyMath(amount, returnString = false) {
+  if (returnString) {
+    return (
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+        .format(amount)
+    );
+  };
+
+  return (
+    Number(
+      new Intl.NumberFormat('en-US', { useGrouping: false })
+        .format(amount)
+    )
+  );
+};
 
 // Return a transaction of realized gain or loss.
 function getRealizedTransaction(posAmount, tradeAmount, date, isBuyBack) {
   // The difference between the original and new investment amounts is a realized gain or loss.
   // In a long position, a gain is profited when the new investment amount is more than its original amount. Otherwise, it's a loss.
-  const difference = addCurrency(tradeAmount, -posAmount);
+  // const difference = addCurrency(tradeAmount, -posAmount);
+  const difference = currencyMath(tradeAmount - posAmount);
 
   // In a short position, a gain is profited when the buyback amount is less than its original amount. Otherwise, it's a loss. If this position was originally a short, negate the difference.
   const realizedAmount = isBuyBack ? -difference : difference;
-  console.log("dif:", difference);
-  console.log("buyback?:", isBuyBack);
-  console.log("realized:", realizedAmount);
+
+
+  // DEBUGGING CONSOLES-------------------
+  // console.log("dif:", difference);
+  // console.log("buyback?:", isBuyBack);
+  // console.log("realized:", realizedAmount);
+  // END - DEBUGGING CONSOLES --------------
+
   // Add a split second to a gain/loss after the trade that triggered it.
   const splitSecondAfterDate = new Date(date.setMilliseconds(date.getMilliseconds() + 1));
   return new Transaction(realizedAmount, splitSecondAfterDate);
 };
 
-function AddTradeForm(props) {
+function TradeForm(props) {
+  const [ticker, setTicker] = useState('');
+  const [company, setCompany] = useState('');
+  const [date, setDate] = useState(new Date().toISOString());
+  const [shares, setShares] = useState(1);
+  const [price, setPrice] = useState(0.01);
+  const [isSelling, setIsSelling] = useState(false);
+  const [note, setNote] = useState('');
+
+  const amount = currencyMath(shares * price);
+
+  function handleSaveOnClick() {
+    const tradeData = {
+      company: {
+        ticker,
+        name: company,
+      },
+      date,
+      note,
+      amount,
+      shares: Number(isSelling ? -shares : shares),
+      user_id: props.userId
+    };
+
+    // Send POST request with options and JSON body.
+    fetch('http://localhost:8000/trades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      body: JSON.stringify(tradeData)
+    })
+      .then(response => response.json())
+      .then(addedTrade => {
+        // Successful response appends added trade to the rest.
+        props.setTrades(allTrades => {
+          let array = [...allTrades];
+          array.push(addedTrade);
+          return array;
+        });
+      });
+  };
+
+  function handleOnChange(setInputState) {
+    return (event) => setInputState(event.target.value);
+  }
+
   return (
-    <form>
-      <div class="mb-3">
-        <label for="ticker" class="form-label">Ticker</label>
-        <input type="text" class="form-control" id="ticker" />
+    <form className="collapse mb-3" id="tradeForm">
+      {/* Ticker */}
+      <div className="row mb-3">
+        <label htmlFor="ticker" className="col-sm-2 col-form-label col-form-label-sm">Ticker</label>
+        <div className="col-sm-10">
+          <input type="text" className="form-control form-control-sm" id="ticker" value={ticker} onChange={handleOnChange(setTicker)} />
+        </div>
       </div>
-      <div class="mb-3">
-        <label for="company" class="form-label">Company</label>
-        <input type="text" class="form-control" id="company" />
+      {/* Company */}
+      <div className="row mb-3">
+        <label htmlFor="company" className="col-sm-2 col-form-label col-form-label-sm">Company</label>
+        <div className="col-sm-10">
+          <input type="text" className="form-control form-control-sm" id="company" value={company} onChange={handleOnChange(setCompany)} />
+        </div>
       </div>
-      <div class="mb-3 form-check">
-        <input type="checkbox" class="form-check-input" id="shortSell" />
-        <label class="form-check-label" for="shortSell">short/sell</label>
+      {/* Date Time */}
+      <div className="row mb-3">
+        <label htmlFor="date" className="col-sm-2 col-form-label col-form-label-sm">Date</label>
+        <div className="col-sm-10">
+          <input type="datetime-local" className="form-control form-control-sm" id="date" value={date.slice(0, date.length - 1)} onChange={handleOnChange(setDate)} />
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary">Submit</button>
+      {/* Shares */}
+      <div className="row mb-3">
+        <label htmlFor="shares" className="col-sm-2 col-form-label col-form-label-sm">Shares</label>
+        <div className="mb-1 col-sm-2">
+          {/* Sell/Short */}
+          <div className="form-check form-control-sm">
+            <input type="checkbox" className="form-check-input" id="shortSell" checked={isSelling} onChange={handleOnChange(setIsSelling)} />
+            <label className="form-check-label" htmlFor="shortSell">sell/short</label>
+          </div>
+        </div>
+        <div className="col-sm-8">
+          <input type="number" min={1} className="form-control form-control-sm" id="shares" value={shares} onChange={handleOnChange(setShares)} />
+        </div>
+      </div>
+      {/* Price */}
+      <div className="row mb-3">
+        <label htmlFor="price" className="col-sm-2 col-form-label col-form-label-sm">Price ($)</label>
+        <div className="col-sm-10">
+          <input type="number" min={0.01} step={0.01} className="form-control form-control-sm" id="price" value={price} onChange={handleOnChange(setPrice)} />
+        </div>
+      </div>
+      {/* Amount */}
+      <div className="row mb-3">
+        <label htmlFor="amount" className="col-sm-2 col-form-label col-form-label-sm">Amount ($)</label>
+        <div className="col-sm-10">
+          <input type="text" readOnly className="form-control form-control-sm" id="amount" value={amount} />
+        </div>
+      </div>
+      {/* Note */}
+      <div className="row mb-3">
+        <label htmlFor="note" className="col-sm-2 col-form-label col-form-label-sm">Note</label>
+        <div className="col-sm-10">
+          <textarea className="form-control form-control-sm" id="note" value={note} onChange={handleOnChange(setNote)}></textarea>
+        </div>
+      </div>
+      {/* Save/Update and Cancel buttons */}
+      <div className="d-flex justify-content-end">
+        <button type="button" className="btn btn-danger btn-sm" >Cancel</button>
+        <button type="button" className="btn btn-primary btn-sm ms-3" onClick={handleSaveOnClick}>Save</button>
+      </div>
     </form>
   )
 };
 
 // Displays the calculated cash amount
 function CashHeader(props) {
-  let balance = USDollar.format(props.total);
+  let balance = props.total;
 
   return (
-    <h1 className='text-end tabluarNumbers pe-4'>{balance}</h1>
+    <h1 className='text-end tabluarNumbers pe-4'>{USDollarString.format(balance)}</h1>
   )
 }
 
@@ -101,7 +214,7 @@ function ColumnHeaders() {
       <strong className='column text-center'>When</strong>
       <strong className='column text-end'>Avg Price</strong>
       <strong className='column text-end'>Shares</strong>
-      <strong className='column text-end'>Position</strong>
+      <strong className='column text-end'>Amount</strong>
     </div>
   )
 }
@@ -150,13 +263,17 @@ function Menu(props) {
     <div className='d-flex justify-content-between px-1'>
       <button
         type='button'
-        className='btn btn-link btn-sm text-secondary'
+        className='btn btn-sm text-secondary'
+        data-bs-toggle="collapse"
+        data-bs-target="#tradeForm"
+        aria-expanded="false"
+        aria-controls="tradeForm"
       >
-        +Trade
+        +trade
       </button>
       <button
         type='button'
-        className='btn btn-link btn-sm text-secondary'
+        className='btn btn-sm text-secondary'
         onClick={() => window.location.reload()}
       >
         -logout {props.name}
@@ -179,7 +296,7 @@ function UnorderedListTemplate(props) {
           return (
             <li className='d-flex justify-content-end small' key={index}>
               <div className={'text-end mx-n2 px-n2 ' + realizedCssClass}>
-                Realized:<span className='ps-2'>{USDollar.format(entry.amount)}</span>
+                Realized:<span className='ps-2'>{USDollarString.format(entry.amount)}</span>
               </div>
             </li>
           );
@@ -189,9 +306,9 @@ function UnorderedListTemplate(props) {
         return (
           <li className='rowOfItems d-flex small' key={index}>
             <div className='column'><FormattedDate dateString={entry.date} /></div>
-            <div className='column text-end'>{USDollar.format(entry.price)}</div>
+            <div className='column text-end'>{USDollarString.format(entry.price)}</div>
             <div className='column text-end'>{entry.shares}</div>
-            <div className='column text-end'>{USDollar.format(entry.amount)}</div>
+            <div className='column text-end'>{USDollarString.format(entry.amount)}</div>
           </li>
         )
       })}
@@ -261,7 +378,8 @@ function App() {
       positions.set(ticker, new Position(trade.amount, trade.date, trade.shares));
 
       // Debit the trade amount from cash and end function.
-      cash = addCurrency(cash, -TradeTransaction.amount);
+      // cash = addCurrency(cash, -TradeTransaction.amount);
+      cash = currencyMath(cash - TradeTransaction.amount);
       return;
     };
 
@@ -284,12 +402,15 @@ function App() {
       tickerGroup.transactions.push(Realized);
 
       // Credit the account the returning investment amount
-      cash = addCurrency(cash, position.amount, Realized.amount);
+      // cash = addCurrency(cash, position.amount, Realized.amount);
+      cash = currencyMath(cash + position.amount + Realized.amount);
 
       // Close the position because all shares have been covered.
       positions.delete(ticker);
     };
-    console.log("cash:", cash);
+
+    // DEBUGGING CONSOLE----------
+    // console.log("cash:", cash);
   });
 
   return (
@@ -298,7 +419,9 @@ function App() {
         <Menu name={username} />
         <CashHeader total={cash} />
       </div>
-      <AddTradeForm />
+      <TradeForm
+        userId={userId}
+        setTrades={setTrades} />
       <ListOfCompaniesAndTrades history={groups} />
     </div>
   );
