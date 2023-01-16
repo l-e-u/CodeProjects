@@ -41,11 +41,6 @@ class Trade extends Position {
   }
 }
 
-// Converts each amount to pennies (integers) for addition then returns decimal.
-function addCurrency(...amounts) {
-  return (amounts.reduce((total, amount) => total + (amount * 100), 0) / 100);
-};
-
 // Returns a number by default, with the option of returning a USD currency string.
 function currencyMath(amount, returnString = false) {
   if (returnString) {
@@ -198,12 +193,37 @@ function TradeForm(props) {
   )
 };
 
-// Displays the calculated cash amount
+// Displays the available cash, everytime cash amount changes, the 'bankroll' effect executes.
 function CashHeader(props) {
-  let balance = props.total;
+  const [cashDisplay, setCashDisplay] = useState(0);
+  const cashAmount = props.cashAmount;
+
+  // Cash displayed updates per increment to show funds incoming/outgoing.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCashDisplay(currentCashDisplay => {
+        const difference = currentCashDisplay - cashAmount;
+
+        // Round the increment to the nearest cent. At some point it will be less than a penny and rounded to zero.
+        const increment = +(difference / 10).toFixed(2);
+        let updatedBalance = currentCashDisplay - increment;
+
+        if (increment === 0) {
+          updatedBalance = cashAmount;
+          clearInterval(interval);
+        };
+
+        // Set cashDisplay to updatedBalance
+        return updatedBalance;
+      });
+    }, 20);
+
+
+    return () => clearInterval(interval);
+  }, [cashAmount]);
 
   return (
-    <h1 className='text-end tabluarNumbers pe-4'>{USDollarString.format(balance)}</h1>
+    <h1 className='tabularNumbers text-end pe-4'>{USDollarString.format(cashDisplay)}</h1>
   )
 }
 
@@ -413,11 +433,16 @@ function App() {
     // console.log("cash:", cash);
   });
 
+  // Sort the groups A-Z by ticker.
+  groups.sort((a, b) => {
+    return a.ticker.toUpperCase() < b.ticker.toUpperCase() ? -1 : 1;
+  });
+
   return (
     <div className='App'>
       <div className='topDisplay'>
         <Menu name={username} />
-        <CashHeader total={cash} />
+        <CashHeader cashAmount={cash} />
       </div>
       <TradeForm
         userId={userId}

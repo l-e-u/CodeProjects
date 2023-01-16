@@ -5,17 +5,16 @@ const router = Router();
 
 async function seedDatabase() {
 
-    function getRndInteger(min, max) {
-        const rndNum = Math.floor(Math.random() * (max - min + 1)) + min;
+    // Returns random integer between min and max that is not zero.
+    function getRndInteger(min, max, includeZero = false) {
+        const randomInteger = Math.floor(Math.random() * (max - min + 1)) + min;
 
-        if (rndNum !== 0) {
-            return rndNum;
-        }
-        else {
-            getRndInteger(min, max);
-        }
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
+        if ((randomInteger === 0) && (includeZero === false)) {
+            return getRndInteger(min, max);
+        };
+
+        return randomInteger;
+    };
 
     // S&P500 index company list
     const sp500 = {
@@ -580,34 +579,68 @@ async function seedDatabase() {
         'Mauris turpis dui, gravida vitae purus in, pellentesque ultrices nunc.'
     ];
 
+    let date = new Date('01-01-2023');
+
     // Makes 1000 trades to seed the database 
     for (let index = 0; index < 1000; index++) {
+        const randomHourToAdd = getRndInteger(0, 8, true);
+        const randomMinuteToAdd = getRndInteger(0, 9, true);
+        const randomSecondToAdd = getRndInteger(0, 59, true);
+
+        // Advance date
+        date.setHours(date.getHours() + randomHourToAdd);
+        date.setMinutes(date.getMinutes() + randomMinuteToAdd);
+        date.setSeconds(date.getSeconds() + randomSecondToAdd);
+
+        const shares = getRndInteger(-100, 100);
+        const exitShares = -shares;
+
+        const amount = getRndInteger(0, 100000) / 100;
+        const exitAmount = getRndInteger(0, 100000) / 100;
+
         // Get random company
         const company = companies[getRndInteger(0, companies.length - 1)];
         const [ticker, name] = company;
-        const amount = getRndInteger(0, 100000) / 100;
-        const shares = getRndInteger(-100, 100);
-        const newTrade = {
+
+        // Create enter trade
+        const enterTrade = {
             amount,
             shares,
             ticker,
+            date: new Date(date),
             company: name,
             user_id: '639cc46151da8d964f60390b',
-            date: new Date(),
+            note: loremIpsum[getRndInteger(0, loremIpsum.length - 1)]
+        };
+
+        // Advance the date for the exit
+        date.setHours(date.getHours() + randomHourToAdd);
+        date.setMinutes(date.getMinutes() + randomMinuteToAdd);
+        date.setSeconds(date.getSeconds() + randomSecondToAdd);
+
+        const exitTrade = {
+            amount: exitAmount,
+            shares: exitShares,
+            ticker,
+            date,
+            company: name,
+            user_id: '639cc46151da8d964f60390b',
             note: loremIpsum[getRndInteger(0, loremIpsum.length - 1)]
         };
 
         // Find existing company document, else create it
         const result = await Models.Company.findOneAndUpdate(
-            { ticker: newTrade.ticker },
-            { $setOnInsert: { name: newTrade.company, ticker: newTrade.ticker } },
+            { ticker: enterTrade.ticker },
+            { $setOnInsert: { name: enterTrade.company, ticker: enterTrade.ticker } },
             { upsert: true, new: true }
         );
 
         // Store company document id in the new trade
-        newTrade.company_id = result._id;
+        enterTrade.company_id = result._id;
+        exitTrade.company_id = result._id;
 
-        Models.Trade.create(newTrade)
+        Models.Trade.create(enterTrade);
+        Models.Trade.create(exitTrade);
     };
 };
 
